@@ -1,0 +1,223 @@
+#include <GL/glut.h>
+#include <math.h>
+
+float wave = 0.0;
+float sunAngle = 0.0;
+float birdX = -110.0;
+float rotationAngle = 0.0;
+float skyR, skyG, skyB;
+
+// -------- Circle Function --------
+void drawCircle(float x, float y, float r) {
+    glBegin(GL_POLYGON);
+    for(int i=0; i<360; i++) {
+        float a = i * 3.1416 / 180;
+        glVertex2f(x + r*cos(a), y + r*sin(a));
+    }
+    glEnd();
+}
+
+// -------- Star Shape --------
+void drawSingleStar(float x, float y, float size) {
+    glBegin(GL_LINES);
+        glVertex2f(x - size, y); glVertex2f(x + size, y);
+        glVertex2f(x, y - size); glVertex2f(x, y + size);
+    glEnd();
+}
+
+void drawStars() {
+    glColor3f(1.0, 1.0, 1.0);
+    for (int i = 0; i < 40; i++) {
+        float x = sin(i * 123.4) * 100;
+        float y = cos(i * 456.7) * 40 + 50;
+        drawSingleStar(x, y, 0.8);
+    }
+}
+
+// -------- Mountains --------
+void drawMountains() {
+    glColor3f(0.15, 0.35, 0.15);
+    glBegin(GL_TRIANGLES);
+        glVertex2f(-105, 0); glVertex2f(-70, 40); glVertex2f(-30, 0);
+        glColor3f(0.1, 0.3, 0.1);
+        glVertex2f(-50, 0); glVertex2f(-10, 55); glVertex2f(30, 0);
+        glColor3f(0.15, 0.35, 0.15);
+        glVertex2f(10, 0); glVertex2f(55, 35); glVertex2f(105, 0);
+    glEnd();
+}
+
+// -------- Curved River (Aka-Baka Par) --------
+void drawRiver() {
+    // Main River Body (Filled with color)
+    glColor3f(0.0, 0.4, 0.8);
+    glBegin(GL_QUAD_STRIP);
+    for (float y = -100; y <= 0; y += 2) {
+        // Perspective logic: River gets wider at the bottom (y=-100)
+        float width_factor = 25.0 - (y * 0.15);
+        // Curve logic: sin function creates the 'aka-baka' effect
+        float curve_offset = 5.0 * sin(y * 0.05);
+
+        glVertex2f(-width_factor + curve_offset, y); // Left bank point
+        glVertex2f(width_factor + curve_offset, y);  // Right bank point
+    }
+    glEnd();
+
+    // Small waves inside the river
+    glColor3f(0.8, 0.9, 1.0);
+    for(float y_pos = -90; y_pos <= -10; y_pos += 20) {
+        glBegin(GL_LINE_STRIP);
+        for(float x_pos = -10; x_pos <= 10; x_pos += 1) {
+            float width_factor = 25.0 - (y_pos * 0.15);
+            float curve_offset = 5.0 * sin(y_pos * 0.05);
+            float internal_wave = 1.5 * sin(x_pos * 0.5 + wave);
+            glVertex2f(x_pos + curve_offset + internal_wave, y_pos);
+        }
+        glEnd();
+    }
+}
+
+// -------- Windmill --------
+void drawWindmill(float x, float y) {
+    glPushMatrix();
+    glTranslatef(x, y, 0);
+    glColor3f(0.2, 0.2, 0.2);
+    glBegin(GL_QUADS);
+        glVertex2f(-1, 0); glVertex2f(1, 0);
+        glVertex2f(0.6, 22); glVertex2f(-0.6, 22);
+    glEnd();
+    glTranslatef(0, 22, 0);
+    glRotatef(rotationAngle, 0, 0, 1);
+    glColor3f(1.0, 1.0, 1.0);
+    for(int i = 0; i < 4; i++) {
+        glRotatef(90, 0, 0, 1);
+        glBegin(GL_TRIANGLES);
+            glVertex2f(0, 0); glVertex2f(12, 2); glVertex2f(12, -2);
+        glEnd();
+    }
+    glPopMatrix();
+}
+
+// -------- House & Tree --------
+void drawHouse(float x, float y) {
+    glColor3f(0.9, 0.7, 0.5);
+    glBegin(GL_QUADS);
+        glVertex2f(x, y); glVertex2f(x+25, y);
+        glVertex2f(x+25, y+18); glVertex2f(x, y+18);
+    glEnd();
+    glColor3f(0.7, 0.2, 0.1);
+    glBegin(GL_TRIANGLES);
+        glVertex2f(x-3, y+18); glVertex2f(x+12.5, y+30); glVertex2f(x+28, y+18);
+    glEnd();
+    glColor3f(0.4, 0.2, 0.0);
+    glBegin(GL_QUADS);
+        glVertex2f(x+10, y); glVertex2f(x+15, y);
+        glVertex2f(x+15, y+10); glVertex2f(x+10, y+10);
+    glEnd();
+    glColor3f(1.0, 1.0, 1.0);
+    glRectf(x+3, y+11, x+8, y+15);
+    glRectf(x+17, y+11, x+22, y+15);
+}
+
+void drawTree(float x, float y) {
+    glColor3f(0.4, 0.2, 0.1);
+    glBegin(GL_QUADS);
+        glVertex2f(x, y); glVertex2f(x+4, y);
+        glVertex2f(x+4, y+15); glVertex2f(x, y+15);
+    glEnd();
+    glColor3f(0.0, 0.5, 0.0);
+    drawCircle(x+2, y+20, 10);
+}
+
+// -------- Birds --------
+void drawBird(float x, float y) {
+    glColor3f(0.0, 0.0, 0.0);
+    float wing = sin(wave * 5.0) * 2.0;
+    glBegin(GL_LINE_STRIP);
+        glVertex2f(x - 4, y + wing); glVertex2f(x, y); glVertex2f(x + 4, y + wing);
+    glEnd();
+}
+
+// -------- Main Display --------
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 1. Sky
+    glColor3f(skyR, skyG, skyB);
+    glBegin(GL_QUADS);
+        glVertex2f(-100, 0); glVertex2f(100, 0);
+        glVertex2f(100, 100); glVertex2f(-100, 100);
+    glEnd();
+
+    // 2. Sun/Moon
+    float sunX = 85 * cos(sunAngle);
+    float sunY = 85 * sin(sunAngle);
+    glColor3f(1.0, 0.8, 0.0);
+    drawCircle(sunX, sunY, 12);
+
+    // 3. Stars or Birds
+    if(sin(sunAngle) <= 0) drawStars();
+    else {
+        drawBird(birdX, 75); drawBird(birdX - 15, 80); drawBird(birdX - 25, 70);
+    }
+
+    // 4. Mountains
+    drawMountains();
+
+    // 5. Land
+    glColor3f(0.0, 0.6, 0.1);
+    glBegin(GL_QUADS);
+        glVertex2f(-100, -100); glVertex2f(100, -100);
+        glVertex2f(100, 0); glVertex2f(-100, 0);
+    glEnd();
+
+    // 6. Curved River
+    drawRiver();
+
+    // 7. Village Objects
+    drawHouse(-85, -45);
+    drawHouse(65, -45);
+
+    drawTree(-55, -35);
+    drawTree(-48, -60);
+    drawTree(52, -35);
+    drawTree(90, -60);
+
+    drawWindmill(40, -20); // Moved slightly to stay on green field
+
+    glutSwapBuffers();
+}
+
+void timer(int v) {
+    wave += 0.15;
+    sunAngle += 0.01;
+    birdX += 0.5;
+    rotationAngle += 5.0;
+    if(birdX > 120) birdX = -120;
+
+    float s = sin(sunAngle);
+    if (s > 0) { skyR = 0.5 * s; skyG = 0.8 * s; skyB = 1.0 * s; }
+    else { skyR = 0.05; skyG = 0.05; skyB = 0.2; }
+
+    if(sunAngle > 2 * 3.1416) sunAngle = 0;
+    glutPostRedisplay();
+    glutTimerFunc(30, timer, 0);
+}
+
+void init() {
+    glClearColor(0,0,0,1);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-100,100,-100,100,-1,1);
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(1000, 700);
+    glutCreateWindow("Village Project FINAL - Curved River");
+    init();
+    glutDisplayFunc(display);
+    glutTimerFunc(30, timer, 0);
+    glutMainLoop();
+    return 0;
+}
